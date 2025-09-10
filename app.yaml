@@ -1,0 +1,41 @@
+# app.yaml for Databricks Apps deployment
+# Panda Restaurant Group P&L Analytics Dashboard - FastAPI + React
+
+command: ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+env:
+  - name: PORT
+    value: "8000"
+  
+  # Databricks environment variables for Panda Restaurant Group
+  - name: GENIE_SPACE_ID
+    valueFrom: "genie-space" 
+  - name: "DATABRICKS_WAREHOUSE_ID"
+    valueFrom: "sql-warehouse"
+  - name: "LLM_ENDPOINT_NAME"
+    valueFrom: "serving-endpoint"
+    
+  # Schema configuration for Panda data
+  - name: DATABRICKS_CATALOG
+    value: "users"
+  - name: DATABRICKS_SCHEMA
+    value: "ashwin_pothukuchi"
+    
+  # Table configuration for Panda P&L data
+  - name: PANDA_PNL_TABLE
+    value: "users.ashwin_pothukuchi.pandapnl"
+  - name: PANDA_STORE_TABLE
+    value: "users.ashwin_pothukuchi.storedim"
+  - name: PANDA_PERIOD_TABLE
+    value: "users.ashwin_pothukuchi.dimperiod"
+  - name: PANDA_MONTHLY_SUMMARY_VIEW
+    value: "users.ashwin_pothukuchi.panda_monthly_summary"
+  - name: PANDA_STORE_SUMMARY_VIEW
+    value: "users.ashwin_pothukuchi.panda_store_summary"
+    
+  # Application configuration
+  - name: GENIE_AGENT_DESCRIPTION
+    value: "AI assistant for Panda Restaurant Group P&L analytics, operations, and performance insights"
+
+  # Database connection will use OAuth in Databricks Apps (no PAT needed)
+  # Authentication is automatically provided by Databricks Apps platform

@@ -1,0 +1,8 @@
+# Environment variables for local development
+# Genie integration
+DB_HOST=https://e2-demo-field-eng.cloud.databricks.com
+DB_PAT=
+GENIE_SPACE_ID=01f079245e301f439197399c2b2b13e5
+LLM_ENDPOINT_NAME=databricks-claude-3-7-sonnet
+
+DATABRICKS_WAREHOUSE_ID=4b9b953939869799

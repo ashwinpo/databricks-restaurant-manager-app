@@ -1,0 +1,8 @@
+.env
+env
+reference-code
+*/mlruns
+*.md
+PandaSchemas/
+.vscode
+.databricks
