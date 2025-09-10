@@ -32,11 +32,217 @@
 
 # COMMAND ----------
 
-# Configuration - Update these for your environment
+# MAGIC %md
+# MAGIC ## 📊 Configuration Section - Customize Your Analysis
+# MAGIC
+# MAGIC **This is where you customize the analysis for your specific needs:**
+# MAGIC - Update connection settings for your environment
+# MAGIC - Add/modify Genie questions to extract different data
+# MAGIC - Customize Claude prompts for report generation and insights
+# MAGIC
+# MAGIC ### 🔧 Environment Configuration
+
+# COMMAND ----------
+
+# Environment Configuration - Update these for your environment
 GENIE_SPACE_ID = "01f08a789d6b16cf8e8819ef3db441d9"  # Your Genie Space ID
 LLM_ENDPOINT_NAME = "databricks-claude-sonnet-4"        # Your Claude endpoint
-STORE_NUMBER = "1619"                                      # Store to analyze
-PERIOD_ID = "202507"                                       # Period to analyze
+STORE_NUMBER = "1619"                                    # Store to analyze
+PERIOD_ID = "202507"                                     # Period to analyze
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 📝 Genie Questions Configuration
+# MAGIC
+# MAGIC **Add or modify questions here to customize what data gets extracted.**
+# MAGIC Each question will automatically be added to the Claude analysis prompts.
+
+# COMMAND ----------
+
+# Genie Questions Configuration
+# Add/modify questions here - they will automatically be included in Claude's analysis
+GENIE_QUESTIONS = {
+    "revenue_performance": {
+        "question": f"""For store {"{store_number}"} in period {"{period}"}, show me the Net Sales breakdown:
+1. Total Net Sales (actual vs plan) - filter for Type = 'Net Sales'
+2. Include all Net Sales line items with actual and plan values
+3. Calculate variance percentages
+Order by actual value descending.""",
+        "description": "Revenue performance and variance analysis",
+        "category": "Revenue"
+    },
+    
+    "cost_structure": {
+        "question": f"""For store {"{store_number}"} in period {"{period}"}, show me Cost of Goods Sold analysis:
+1. Total COGS by category (actual vs plan)
+2. COGS breakdown by food type (chicken, beef, seafood, etc.)
+3. Calculate COGS as percentage of sales where possible
+Filter for Type = 'Cogs'. Show actual vs plan values.""",
+        "description": "Cost structure and COGS analysis",
+        "category": "Costs"
+    },
+    
+    "labor_analysis": {
+        "question": f"""For store {"{store_number}"} in period {"{period}"}, show me Labor cost analysis:
+1. Total labor costs (actual vs plan)
+2. Labor breakdown by category (management, hourly, benefits)
+3. Labor hours vs costs analysis
+Filter for Type = 'Labor'. Show actual vs plan values.""",
+        "description": "Labor cost structure and efficiency",
+        "category": "Labor"
+    },
+    
+    "profitability_metrics": {
+        "question": f"""For store {"{store_number}"} in period {"{period}"}, show me profitability metrics:
+1. Controllable Profit (actual vs plan)
+2. Restaurant Contribution (actual vs plan)  
+3. Key profitability ratios and margins
+Filter for Type in ('Controllable Profit', 'Restaurant Contribution').""",
+        "description": "Profitability and bottom-line performance",
+        "category": "Profitability"
+    },
+    
+    "variance_analysis": {
+        "question": f"""For store {"{store_number}"} in period {"{period}"}, find significant variances:
+1. Calculate variance percentage for each line item: ((Actual - Plan) / Plan) * 100
+2. Show items with variance greater than 20% (positive or negative)  
+3. Focus on items with significant dollar impact (absolute value > 1000)
+4. Include Type, SubType, LineItem, Actual, Plan, and calculated variance
+Order by absolute variance percentage descending.""",
+        "description": "Significant variances and outliers",
+        "category": "Variances"
+    },
+    
+    # 🔥 ADD NEW QUESTIONS HERE - Example:
+    # "monthly_trends": {
+    #     "question": f"""For store {"{store_number}"}, show me monthly revenue trends:
+    # 1. Compare current period {"{period}"} with previous 3 months
+    # 2. Show Net Sales by month with growth percentages
+    # 3. Identify seasonal patterns or trends
+    # Filter for Type = 'Net Sales' and show monthly comparison.""",
+    #     "description": "Monthly revenue trends and seasonality",
+    #     "category": "Trends"
+    # },
+    
+    # "digital_sales": {
+    #     "question": f"""For store {"{store_number}"} in period {"{period}"}, analyze digital sales:
+    # 1. Third party digital sales performance
+    # 2. Panda digital/online orders
+    # 3. Digital vs in-store sales mix
+    # Filter for digital or third-party related line items.""",
+    #     "description": "Digital channel performance",
+    #     "category": "Digital"
+    # }
+}
+
+print(f"📋 Configured {len(GENIE_QUESTIONS)} Genie questions for analysis:")
+for key, config in GENIE_QUESTIONS.items():
+    print(f"   • {key}: {config['description']}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 🤖 Claude Prompts Configuration
+# MAGIC
+# MAGIC **Customize Claude's analysis prompts here:**
+# MAGIC - Modify how Claude generates the narrative report
+# MAGIC - Adjust the structured insights generation
+# MAGIC - Change the focus, tone, or output format
+
+# COMMAND ----------
+
+# Claude Prompts Configuration
+CLAUDE_PROMPTS = {
+    "narrative_analysis": """You are a professional restaurant operations analyst. I will provide you with structured quantitative insights from a Panda Restaurant Group store's P&L data.
+
+Your task is to analyze these insights and provide a comprehensive business analysis report similar to a management consulting deliverable.
+
+**Important Context:**
+- This data comes from structured SQL queries via Databricks Genie (not raw table dumps)
+- All metrics have been validated and variance calculations are accurate
+- Focus on actionable business insights for restaurant operations
+
+**Analysis Framework:**
+1. **Key Insights and Trends** - What are the most important findings?
+2. **Notable Patterns and Anomalies** - What stands out as unusual or concerning?
+3. **Business Implications** - What actions should management take?
+
+**Instructions:**
+- Think step-by-step through the analysis
+- Prioritize high-impact findings (large dollar amounts, significant variances)
+- Provide specific, actionable recommendations
+- Use professional business language
+- Structure your response with clear sections and bullet points
+- Include relevant metrics and percentages to support your analysis
+- Focus on operational efficiency, cost control, and revenue optimization
+
+Please provide a thorough analysis that a restaurant executive could use to make informed decisions.""",
+
+    "structured_insights": """You are a restaurant operations analyst creating executive dashboard cards for a store manager.
+
+I will provide you with structured P&L data from Databricks Genie. Your task is to identify the 5 most important insights that a store manager needs to know and act upon.
+
+**Your Task:**
+Create exactly 5 insight cards that follow this structure. Focus on actionable insights that drive business results.
+
+**Guidelines:**
+- Prioritize insights by business impact (large dollar amounts, significant variances)
+- Use "critical" for urgent issues (>30% variance or major revenue gaps)
+- Use "alert" for important warnings (15-30% negative variance)
+- Use "opportunity" for positive trends or cost savings (>20% positive variance)
+- Use "insight" for important patterns or moderate variances (10-20%)
+- Use "performance" for overall performance summaries
+- Make titles punchy and manager-friendly (avoid jargon)
+- Recommendations should be specific and actionable
+- Focus on what the store manager can actually control or influence
+- Include timeframes that reflect urgency and business cycles
+
+**Icons Guide:**
+- TrendingDown: Declining performance, negative variances
+- TrendingUp: Improving performance, positive trends  
+- DollarSign: Cost/revenue focus, financial opportunities
+- BarChart3: Performance analysis, comparisons
+- Target: Goals, targets, optimization
+- AlertCircle: Attention needed, monitoring required
+
+Return ONLY the JSON structure, no other text."""
+}
+
+# Customization instructions
+print("🎨 Claude Prompts Configured:")
+print("   • narrative_analysis: Generates comprehensive P&L report")
+print("   • structured_insights: Creates dashboard insight cards")
+print()
+print("💡 To customize:")
+print("   • Modify CLAUDE_PROMPTS above to change analysis focus")
+print("   • Add industry-specific terminology or priorities")
+print("   • Adjust the tone (formal/casual) or output format")
+print("   • Change the business focus (cost control vs growth vs efficiency)")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 🔄 How to Customize This Analysis
+# MAGIC
+# MAGIC ### Adding New Genie Questions:
+# MAGIC 1. **Add to GENIE_QUESTIONS** dictionary above
+# MAGIC 2. Include: question text, description, category
+# MAGIC 3. Use `{store_number}` and `{period}` placeholders
+# MAGIC 4. The question will automatically be included in Claude's analysis
+# MAGIC
+# MAGIC ### Modifying Claude Prompts:
+# MAGIC 1. **Edit CLAUDE_PROMPTS** dictionary above  
+# MAGIC 2. **narrative_analysis**: Controls the main P&L report generation
+# MAGIC 3. **structured_insights**: Controls dashboard card creation
+# MAGIC 4. Adjust language, focus areas, or output format as needed
+# MAGIC
+# MAGIC ### Examples of Customizations:
+# MAGIC - **Add monthly trends analysis**: Uncomment the "monthly_trends" question
+# MAGIC - **Focus on digital sales**: Uncomment the "digital_sales" question  
+# MAGIC - **Change report tone**: Modify the narrative_analysis prompt
+# MAGIC - **Add industry metrics**: Include restaurant-specific KPIs in questions
+# MAGIC - **Adjust urgency thresholds**: Change variance percentages in structured_insights prompt
 
 # COMMAND ----------
 
@@ -204,185 +410,113 @@ print("✅ Genie Agent initialized successfully")
 # COMMAND ----------
 
 class PandaInsightGenerator:
-    """Generate structured quantitative insights from Panda P&L data using Genie"""
+    """Generate structured quantitative insights from Panda P&L data using configurable Genie questions"""
     
-    def __init__(self):
+    def __init__(self, genie_questions: dict):
         self.insights: List[QuantitativeInsight] = []
+        self.genie_questions = genie_questions
+        self.question_responses = {}  # Store responses for Claude analysis
     
-    def generate_revenue_insights(self, store_number: str, period: str) -> List[QuantitativeInsight]:
-        """Generate revenue performance insights"""
+    def ask_genie_question(self, question_key: str, store_number: str, period: str) -> GenieResult:
+        """Ask a specific Genie question with store/period substitution"""
+        if question_key not in self.genie_questions:
+            return GenieResult(answer=f"Question '{question_key}' not found", sql="", df=pd.DataFrame())
+        
+        question_config = self.genie_questions[question_key]
+        
+        # Substitute store_number and period in the question
+        formatted_question = question_config["question"].format(
+            store_number=store_number, 
+            period=period
+        )
+        
+        print(f"🔍 {question_config['description']} (Category: {question_config['category']})")
+        
+        response = ask_genie_structured(formatted_question)
+        
+        # Store the response for Claude analysis
+        self.question_responses[question_key] = {
+            "config": question_config,
+            "response": response,
+            "formatted_question": formatted_question
+        }
+        
+        print(f"📊 Found {len(response.df)} results")
+        return response
+    
+    def extract_insights_from_response(self, question_key: str, response: GenieResult, store_number: str, period: str) -> List[QuantitativeInsight]:
+        """Extract quantitative insights from a Genie response"""
         insights = []
-        
-        print(f"🔍 Analyzing revenue performance for Store {store_number}, Period {period}...")
-        
-        # Net Sales Analysis
-        net_sales_query = f"""
-        For store {store_number} in period {period}, show me the Net Sales breakdown:
-        1. Total Net Sales (actual vs plan) - filter for Type = 'Net Sales'
-        2. Include all Net Sales line items with actual and plan values
-        3. Calculate variance percentages
-        Order by actual value descending.
-        """
-        
-        response = ask_genie_structured(net_sales_query)
-        print(f"📊 Net Sales Analysis: Found {len(response.df)} line items")
+        question_config = self.genie_questions[question_key]
         
         if not response.df.empty and 'Actual' in response.df.columns:
             for _, row in response.df.iterrows():
                 actual = float(row.get('Actual', 0))
-                plan = float(row.get('Plan', 0))
-                variance = ((actual - plan) / plan * 100) if plan != 0 else 0
+                plan = float(row.get('Plan', 0)) if 'Plan' in row else None
+                variance = ((actual - plan) / plan * 100) if plan and plan != 0 else None
                 
-                line_item = row.get('LineItem', 'Net Sales')
+                metric_name = row.get('LineItem', row.get('Type', f"{question_config['category']} Metric"))
                 
                 insights.append(QuantitativeInsight(
-                    category="Revenue Performance",
-                    subcategory="Net Sales",
-                    metric_name=line_item,
+                    category=question_config['category'],
+                    subcategory=row.get('SubType', question_config['description']),
+                    metric_name=metric_name,
                     value=actual,
                     comparison_value=plan,
                     variance_pct=variance,
                     period=period,
-                    context=f"Store {store_number} net sales analysis",
+                    context=f"Store {store_number} - {question_config['description']}",
                     sql_query=response.sql
                 ))
-        
-        # Digital Sales Analysis
-        digital_query = f"""
-        For store {store_number} in period {period}, show me digital sales performance:
-        1. Third party digital sales
-        2. Panda digital sales  
-        3. Sales channel breakdown for digital/online orders
-        Filter for Type containing 'Digital' or 'Third Party'.
-        """
-        
-        digital_response = ask_genie_structured(digital_query)
-        print(f"📱 Digital Sales Analysis: Found {len(digital_response.df)} metrics")
-        
-        return insights
-    
-    def generate_cost_insights(self, store_number: str, period: str) -> List[QuantitativeInsight]:
-        """Generate cost structure insights"""
-        insights = []
-        
-        print(f"💰 Analyzing cost structure for Store {store_number}, Period {period}...")
-        
-        # COGS Analysis
-        cogs_query = f"""
-        For store {store_number} in period {period}, show me Cost of Goods Sold analysis:
-        1. Total COGS by category (actual vs plan)
-        2. COGS breakdown by food type (chicken, beef, seafood, etc.)
-        3. Calculate COGS as percentage of sales where possible
-        Filter for Type = 'Cogs'. Show actual vs plan values.
-        """
-        
-        response = ask_genie_structured(cogs_query)
-        print(f"🍗 COGS Analysis: Found {len(response.df)} cost categories")
-        
-        # Labor Analysis
-        labor_query = f"""
-        For store {store_number} in period {period}, show me Labor cost analysis:
-        1. Total labor costs (actual vs plan)
-        2. Labor breakdown by category (management, hourly, benefits)
-        3. Labor hours vs costs analysis
-        Filter for Type = 'Labor'. Show actual vs plan values.
-        """
-        
-        labor_response = ask_genie_structured(labor_query)
-        print(f"👥 Labor Analysis: Found {len(labor_response.df)} labor categories")
-        
-        if not labor_response.df.empty and 'Actual' in labor_response.df.columns:
-            total_labor_actual = labor_response.df['Actual'].sum()
-            total_labor_plan = labor_response.df['Plan'].sum() if 'Plan' in labor_response.df.columns else 0
-            variance = ((total_labor_actual - total_labor_plan) / total_labor_plan * 100) if total_labor_plan != 0 else 0
-            
-            insights.append(QuantitativeInsight(
-                category="Cost Structure",
-                subcategory="Labor Costs",
-                metric_name="Total Labor Costs",
-                value=total_labor_actual,
-                comparison_value=total_labor_plan,
-                variance_pct=variance,
-                period=period,
-                context=f"Store {store_number} total labor cost analysis"
-            ))
-        
-        return insights
-    
-    def generate_profitability_insights(self, store_number: str, period: str) -> List[QuantitativeInsight]:
-        """Generate profitability analysis insights"""
-        insights = []
-        
-        print(f"📈 Analyzing profitability for Store {store_number}, Period {period}...")
-        
-        profit_query = f"""
-        For store {store_number} in period {period}, show me profitability metrics:
-        1. Controllable Profit (actual vs plan)
-        2. Restaurant Contribution (actual vs plan)  
-        3. Key profitability ratios and margins
-        Filter for Type in ('Controllable Profit', 'Restaurant Contribution').
-        """
-        
-        response = ask_genie_structured(profit_query)
-        print(f"💹 Profitability Analysis: Found {len(response.df)} profit metrics")
-        
-        if not response.df.empty and 'Actual' in response.df.columns:
-            for _, row in response.df.iterrows():
-                actual = float(row.get('Actual', 0))
-                plan = float(row.get('Plan', 0))
-                variance = ((actual - plan) / plan * 100) if plan != 0 else 0
-                metric_type = row.get('Type', 'Profitability Metric')
-                
-                insights.append(QuantitativeInsight(
-                    category="Profitability Analysis",
-                    subcategory=metric_type,
-                    metric_name=metric_type,
-                    value=actual,
-                    comparison_value=plan,
-                    variance_pct=variance,
-                    period=period,
-                    context=f"Store {store_number} {metric_type.lower()} performance"
-                ))
-        
-        return insights
-    
-    def generate_variance_analysis(self, store_number: str, period: str) -> List[QuantitativeInsight]:
-        """Generate variance analysis insights"""
-        insights = []
-        
-        print(f"⚠️ Analyzing variances for Store {store_number}, Period {period}...")
-        
-        variance_query = f"""
-        For store {store_number} in period {period}, find significant variances:
-        1. Calculate variance percentage for each line item: ((Actual - Plan) / Plan) * 100
-        2. Show items with variance greater than 20% (positive or negative)  
-        3. Focus on items with significant dollar impact (absolute value > 1000)
-        4. Include Type, SubType, LineItem, Actual, Plan, and calculated variance
-        Order by absolute variance percentage descending.
-        """
-        
-        response = ask_genie_structured(variance_query)
-        print(f"📊 Variance Analysis: Found {len(response.df)} significant variances")
         
         return insights
     
     def generate_all_insights(self, store_number: str, period: str) -> List[QuantitativeInsight]:
-        """Generate comprehensive insights for a store and period"""
-        print(f"\n🚀 Generating comprehensive insights for Store {store_number}, Period {period}\n")
+        """Generate comprehensive insights using all configured Genie questions"""
+        print(f"\n🚀 Generating insights for Store {store_number}, Period {period}")
+        print(f"📋 Using {len(self.genie_questions)} configured questions\n")
         
         all_insights = []
         
-        all_insights.extend(self.generate_revenue_insights(store_number, period))
-        all_insights.extend(self.generate_cost_insights(store_number, period))
-        all_insights.extend(self.generate_profitability_insights(store_number, period))
-        all_insights.extend(self.generate_variance_analysis(store_number, period))
+        # Process each configured Genie question
+        for question_key, question_config in self.genie_questions.items():
+            print(f"\n--- Processing: {question_key} ---")
+            
+            # Ask Genie the question
+            response = self.ask_genie_question(question_key, store_number, period)
+            
+            # Extract insights from the response
+            question_insights = self.extract_insights_from_response(question_key, response, store_number, period)
+            all_insights.extend(question_insights)
+            
+            print(f"✅ Extracted {len(question_insights)} insights from {question_key}")
         
         self.insights = all_insights
-        print(f"\n✅ Generated {len(all_insights)} quantitative insights")
+        print(f"\n🎯 Total insights generated: {len(all_insights)}")
         return all_insights
+    
+    def get_question_responses_for_claude(self) -> dict:
+        """Get formatted question responses for Claude analysis"""
+        formatted_responses = {}
+        
+        for question_key, response_data in self.question_responses.items():
+            config = response_data['config']
+            response = response_data['response']
+            
+            formatted_responses[question_key] = {
+                "description": config['description'],
+                "category": config['category'],
+                "question_asked": response_data['formatted_question'],
+                "sql_generated": response.sql,
+                "data_found": len(response.df),
+                "key_results": response.answer[:500] + "..." if len(response.answer) > 500 else response.answer,
+                "data_summary": response.df.to_dict('records')[:10] if not response.df.empty else []  # First 10 rows
+            }
+        
+        return formatted_responses
 
-# Generate insights
-generator = PandaInsightGenerator()
+# Generate insights using configured questions
+generator = PandaInsightGenerator(GENIE_QUESTIONS)
 insights = generator.generate_all_insights(STORE_NUMBER, PERIOD_ID)
 
 # COMMAND ----------
@@ -398,6 +532,8 @@ insights_data = {
     "period": PERIOD_ID,
     "analysis_date": datetime.now().isoformat(),
     "total_insights": len(insights),
+    "genie_questions_analyzed": list(GENIE_QUESTIONS.keys()),
+    "detailed_question_responses": generator.get_question_responses_for_claude(),
     "insights_by_category": {},
     "key_metrics": [],
     "significant_variances": []
@@ -436,9 +572,11 @@ for insight in insights:
 insights_json = json.dumps(insights_data, indent=2)
 
 print(f"📋 Prepared structured data for Claude analysis:")
-print(f"   • {len(insights_data['key_metrics'])} key metrics")
-print(f"   • {len(insights_data['significant_variances'])} significant variances")
+print(f"   • {len(insights_data['genie_questions_analyzed'])} Genie questions processed")
+print(f"   • {len(insights_data['key_metrics'])} key metrics identified") 
+print(f"   • {len(insights_data['significant_variances'])} significant variances found")
 print(f"   • {len(insights_data['insights_by_category'])} insight categories")
+print(f"   • Detailed responses from all configured Genie questions included")
 
 # COMMAND ----------
 
@@ -456,36 +594,13 @@ token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiTok
 workspace_url = spark.conf.get("spark.databricks.workspaceUrl")
 endpoint_url = f"https://{workspace_url}/serving-endpoints/{LLM_ENDPOINT_NAME}/invocations"
 
-# Craft the analysis prompt
-analysis_prompt = f"""You are a professional restaurant operations analyst. I will provide you with structured quantitative insights from a Panda Restaurant Group store's P&L data.
-
-Your task is to analyze these insights and provide a comprehensive business analysis report similar to a management consulting deliverable.
-
-**Important Context:**
-- This data comes from structured SQL queries via Databricks Genie (not raw table dumps)
-- All metrics have been validated and variance calculations are accurate
-- Focus on actionable business insights for restaurant operations
-
-**Analysis Framework:**
-1. **Key Insights and Trends** - What are the most important findings?
-2. **Notable Patterns and Anomalies** - What stands out as unusual or concerning?
-3. **Business Implications** - What actions should management take?
+# Craft the analysis prompt using configurable prompt
+analysis_prompt = f"""{CLAUDE_PROMPTS['narrative_analysis']}
 
 **Structured Data:**
 ```json
 {insights_json}
-```
-
-**Instructions:**
-- Think step-by-step through the analysis
-- Prioritize high-impact findings (large dollar amounts, significant variances)
-- Provide specific, actionable recommendations
-- Use professional business language
-- Structure your response with clear sections and bullet points
-- Include relevant metrics and percentages to support your analysis
-- Focus on operational efficiency, cost control, and revenue optimization
-
-Please provide a thorough analysis that a restaurant executive could use to make informed decisions."""
+```"""
 
 # Prepare the API request
 headers = {
@@ -587,17 +702,12 @@ display(Markdown(claude_analysis[1]["text"]))
 def generate_structured_insights_with_claude(insights_data: dict, token: str, endpoint_url: str) -> dict:
     """Use Claude to identify key insights and structure them for UI cards"""
     
-    insights_prompt = f"""You are a restaurant operations analyst creating executive dashboard cards for a store manager.
-
-I will provide you with structured P&L data from Databricks Genie. Your task is to identify the 5 most important insights that a store manager needs to know and act upon.
+    insights_prompt = f"""{CLAUDE_PROMPTS['structured_insights']}
 
 **Structured P&L Data:**
 ```json
 {json.dumps(insights_data, indent=2)}
 ```
-
-**Your Task:**
-Create exactly 5 insight cards that follow this structure. Focus on actionable insights that drive business results.
 
 **Required JSON Format:**
 ```json
@@ -638,29 +748,7 @@ Create exactly 5 insight cards that follow this structure. Focus on actionable i
     }}
   }}
 }}
-```
-
-**Guidelines:**
-- Prioritize insights by business impact (large dollar amounts, significant variances)
-- Use "critical" for urgent issues (>30% variance or major revenue gaps)
-- Use "alert" for important warnings (15-30% negative variance)
-- Use "opportunity" for positive trends or cost savings (>20% positive variance)
-- Use "insight" for important patterns or moderate variances (10-20%)
-- Use "performance" for overall performance summaries
-- Make titles punchy and manager-friendly (avoid jargon)
-- Recommendations should be specific and actionable
-- Focus on what the store manager can actually control or influence
-- Include timeframes that reflect urgency and business cycles
-
-**Icons Guide:**
-- TrendingDown: Declining performance, negative variances
-- TrendingUp: Improving performance, positive trends  
-- DollarSign: Cost/revenue focus, financial opportunities
-- BarChart3: Performance analysis, comparisons
-- Target: Goals, targets, optimization
-- AlertCircle: Attention needed, monitoring required
-
-Return ONLY the JSON structure, no other text."""
+```"""
 
     # Prepare the API request for insights generation
     headers = {
@@ -854,45 +942,55 @@ else:
 
 # COMMAND ----------
 
-# # Save the complete analysis results
-# analysis_results = {
-#     "metadata": {
-#         "store_number": STORE_NUMBER,
-#         "period": PERIOD_ID,
-#         "generated_at": datetime.now().isoformat(),
-#         "genie_space_id": GENIE_SPACE_ID,
-#         "llm_endpoint": LLM_ENDPOINT_NAME,
-#         "methodology": "Genie + Structured Insights + Claude Analysis"
-#     },
-#     "quantitative_insights": {
-#         "total_insights": len(insights),
-#         "insights_by_category": insights_data["insights_by_category"],
-#         "key_metrics": insights_data["key_metrics"],
-#         "significant_variances": insights_data["significant_variances"]
-#     },
-#     "narrative_analysis": claude_analysis,
-#     "summary": {
-#         "approach": "Used Databricks Genie for structured data extraction, then Claude for narrative analysis",
-#         "benefits": [
-#             "Deterministic and repeatable results",
-#             "Secure - no raw data exposure", 
-#             "Cost effective token usage",
-#             "Comprehensive business insights"
-#         ]
-#     }
-# }
+# Save the complete analysis results
+analysis_results = {
+    "metadata": {
+        "store_number": STORE_NUMBER,
+        "period": PERIOD_ID,
+        "generated_at": datetime.now().isoformat(),
+        "genie_space_id": GENIE_SPACE_ID,
+        "llm_endpoint": LLM_ENDPOINT_NAME,
+        "methodology": "Genie + Structured Insights + Claude Analysis"
+    },
+    "quantitative_insights": {
+        "total_insights": len(insights),
+        "insights_by_category": insights_data["insights_by_category"],
+        "key_metrics": insights_data["key_metrics"],
+        "significant_variances": insights_data["significant_variances"]
+    },
+    "narrative_analysis": claude_analysis,
+    "summary": {
+        "approach": "Used Databricks Genie for structured data extraction, then Claude for narrative analysis",
+        "benefits": [
+            "Deterministic and repeatable results",
+            "Secure - no raw data exposure", 
+            "Cost effective token usage",
+            "Comprehensive business insights"
+        ]
+    }
+}
 
-# # Convert to JSON for storage
-# results_json = json.dumps(analysis_results, indent=2)
+# Convert to JSON for storage
+results_json = json.dumps(analysis_results, indent=2)
 
-# print(f"📄 Complete analysis saved:")
-# print(f"   • {len(insights)} quantitative insights extracted")
-# print(f"   • {len(insights_data['key_metrics'])} key metrics identified")
-# print(f"   • {len(insights_data['significant_variances'])} significant variances found")
-# print(f"   • Comprehensive narrative analysis generated")
-# print()
-# print("🎯 This approach demonstrates the proper way to generate AI-driven")
-# print("   business insights from P&L data using structured methodologies.")
+print(f"📄 Complete analysis saved:")
+print(f"   • {len(insights)} quantitative insights extracted")
+print(f"   • {len(insights_data['key_metrics'])} key metrics identified")
+print(f"   • {len(insights_data['significant_variances'])} significant variances found")
+print(f"   • Comprehensive narrative analysis generated")
+print()
+print("🎯 This approach demonstrates the proper way to generate AI-driven")
+print("   business insights from P&L data using structured methodologies.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Important -- Update App
+# MAGIC Paste the json below into `frontend-v2/public/pnl-insights-config.json`
+
+# COMMAND ----------
+
+print(results_json)
 
 # COMMAND ----------
 
